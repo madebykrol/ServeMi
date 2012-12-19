@@ -20,7 +20,7 @@ class Main extends Server {
 		
 		print $response."\n";
 		
-		socket_sendto($this->socket, $response, $len, 0, $datagram->getHost(), $datagram->getPort());
+		$datagram->send($response, $datagram->getHost(), $datagram->getPort());
 
 	}
 	

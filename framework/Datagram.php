@@ -69,7 +69,11 @@ class Datagram {
 		
 	}
 	
-	public function send() {
+	public function send($msg, $host, $port, $flags = 0) {
+		
+		$len = strlen($msg);
+
+		socket_sendto($this->socket, $msg, $len, $flags, $host, $port);
 		
 	}
 	
