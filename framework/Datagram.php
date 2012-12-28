@@ -9,7 +9,7 @@ class Datagram {
 	
 	/**
 	 * Databuffer
-	 * @var String
+	 * @var array
 	 */
 	protected $buffer;
 	
@@ -61,7 +61,8 @@ class Datagram {
 		if($bytesReceived == -1) {
 			throw new SocketException(socket_last_error($this->socket));
 		} else {
-			$this->buffer .= $buffer. $this->port;
+			
+			$this->buffer = $buffer;
 			return true;
 		}
 		
@@ -69,11 +70,9 @@ class Datagram {
 		
 	}
 	
-	public function send($msg, $host, $port, $flags = 0) {
-		
-		$len = strlen($msg);
+	public function send(Packet $pkt, $host, $port, $flags = 0) {
 
-		socket_sendto($this->socket, $msg, $len, $flags, $host, $port);
+		socket_sendto($this->socket, $pkt->getByteStream(), $pkt->getSize(), $flags, $host, $port);
 		
 	}
 	
@@ -86,8 +85,12 @@ class Datagram {
 		return $this->port;
 	}
 	
-	public function getBuffer() {
-		return $this->buffer;
+	public function getPacket() {
+		
+		$pkt = new Packet();
+		$pkt->setByteStream($this->buffer);
+		
+		return $pkt;
 	}
 	
 	public function flushBuffer() {

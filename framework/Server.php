@@ -16,12 +16,16 @@ abstract class Server {
 	protected $hosts = array();
 	
 
+	/**
+	 * 
+	 */
+	protected $protocolHandler = null;
 	
 	/**
-	 * Protocoll
+	 * Protocol
 	 * @var int
 	 */
-	protected $transportProtocoll = Server::PROTOCOL_TCP;
+	protected $transportProtocol = Server::PROTOCOL_TCP;
 	
 	/**
 	 * Socket
@@ -42,10 +46,17 @@ abstract class Server {
 	protected $type = Server::TYPE_STREAM;
 	
 	/**
-	 * 
+	 * Stack of packets 
+	 */
+	protected $packetStack = null;
+	
+	/**
+	 * Server constructor
 	 */
 	public function __construct() {
 		
+		$this->protocolHandler = new ProtocolHandler();
+		$this->packetStack = new Stack(30);
 		$this->init();
 		
 		if(($this->socket = socket_create($this->domain, $this->type, $this->protocol)) === false) {
@@ -71,9 +82,13 @@ abstract class Server {
 	}
 	
 	public function start() {
-		print "start";
+		while($this->isRunning()) {
+			
+			
+  		$this->serverLoop();
+		}
+  
 	}
-	
 	public function isRunning() {
 		return $this->running;
 	}
@@ -99,5 +114,9 @@ abstract class Server {
 	const TYPE_SEQPACKET 	= SOCK_SEQPACKET;
 	const TYPE_RAW 				= SOCK_RAW;
 	const TYPE_RDM 				= SOCK_RDM;
+	
+	const BYTE = "C1";
+	const SBYTE = "c1";
+	const DOUBLE = "d";
 	
 }

@@ -11,10 +11,4 @@ $main = new Main();
 
 $main->start();
 
-while($main->isRunning()) {
-  
-  $main->serverLoop();
-  
-}
-
 $main->shutdown();
