@@ -17,16 +17,24 @@ class ProtocolHandler {
 		
 	}
 	
+	/**
+	 * set the command size in bytes.
+	 * @param unknown_type $size
+	 */
 	public function setCommandSize($size) {
 		$this->commandSize = $size;
 	}
 	
+	/**
+	 * Set a listener.
+	 * @param PacketListener $l
+	 */
 	public function setPacketListener(PacketListener $l) {
 		$this->listener = $l;
 	}
 	
 	/**
-	 * Add a comman
+	 * Add a command
 	 * @param unknown_type $command
 	 */
 	public function addCommand($command, $format) {
@@ -41,34 +49,49 @@ class ProtocolHandler {
 	 * @return Packet
 	 */
 	public function processPacket(Packet $packet) {
-		if($this->validatePacket($packet)) {
-			return $this->listener->process($packet, "");
+		if($this->unpackPacket($packet)) {
+			try {
+				return $this->listener->onIncoming($packet);
+			} catch (Exception $e) {
+				$this->listener->onError($e);
+			}
+			return false;
 		} else {
 			throw new BadPacketException();
 		}
-		return null;
+		return false;
 	}
 	
-	public function validatePacket(Packet $packet) {
-		$command = $packet->unpack(Server::BYTE);
-		
-		$command = $command[1];
-		$pattern = Server::BYTE."command";
-		if(isset($this->commands[$command])) {
-			
-			foreach($this->commands[$command] as $pktPart) {
-				$datatype 	= $pktPart[0];
-				$ident			= $pktPart[1];
-				$pattern .= "/".$datatype.$ident;
-			}
-			
-			$packetPayload = $packet->unpack($pattern);
-			print_r($packetPayload);
-			if((count($packetPayload)-1) == count($this->commands[$command])) {
-				return true;
-			}
-		} 
-		
+	/**
+	 * unpack the packet by it's format from the command list.
+	 * @param Packet $packet
+	 */
+	protected function unpackPacket(Packet $packet) {
+		$payload = $packet->unpack(Server::BYTE."command");
+		if(is_array($payload)) {
+			$command = $payload["command"];
+			$pattern = Server::BYTE."command";
+			if(isset($this->commands[$command])) {
+				
+				foreach($this->commands[$command] as $pktPart) {
+					$datatype 	= $pktPart[0];
+					$ident			= $pktPart[1];
+					$len = "";
+					if(isset($pktPart[2])) {
+						$len = $pktPart[2];
+					}
+					$pattern .= "/".$datatype.$len.$ident;
+					
+				}
+				
+				$packetPayload = $packet->unpack($pattern);
+				
+				if((count($packetPayload)-1) == count($this->commands[$command])) {
+					$packet->setUnpackedPayload($packetPayload);
+					return true;
+				}
+			} 
+		}
 		return false;
 	}
 }

@@ -1,6 +1,10 @@
 <?php
 abstract class Server {
 	
+	protected $startUTime = 0;
+	
+	protected $lastTickUTime = 0;
+	
 	protected $clients = array();
 	
 	/**
@@ -49,6 +53,13 @@ abstract class Server {
 	 * Stack of packets 
 	 */
 	protected $packetStack = null;
+	protected $responseStack = null;
+	
+	protected $stackSize = 30;
+	
+	protected $tickIntervalUS = 300;
+	
+	protected $maxPacketSize = 1024;
 	
 	/**
 	 * Server constructor
@@ -56,7 +67,8 @@ abstract class Server {
 	public function __construct() {
 		
 		$this->protocolHandler = new ProtocolHandler();
-		$this->packetStack = new Stack(30);
+		$this->packetStack = new Stack("Packet", $this->stackSize);
+		$this->responseStack = new Stack("Packet");
 		$this->init();
 		
 		if(($this->socket = socket_create($this->domain, $this->type, $this->protocol)) === false) {
@@ -76,16 +88,32 @@ abstract class Server {
 				throw new SocketException(socket_last_error($this->socket));
 			}
 		}
-
 		
 		$this->running = true;
 	}
 	
 	public function start() {
+		$this->lastTickUTime = microtime(true);
 		while($this->isRunning()) {
 			
+			$datagram = new Datagram($this->socket);
 			
-  		$this->serverLoop();
+			if($datagram->read($this->maxPacketSize)) {
+				try {
+					$pkt = $datagram->getPacket();
+					if($this->protocolHandler->processPacket($pkt)) {
+						$this->packetStack->add($pkt);
+					}
+				} catch (BadPacketException $e) {
+					
+				}
+			}
+			if($this->lastTickUTime < (microtime(true)-($this->tickIntervalUS * 0.000001))) {
+  			$this->simulationStep();
+  			$this->sendOutgoing();
+  			$this->lastTickUTime = microtime(true);
+			} 
+  		
 		}
   
 	}
@@ -97,8 +125,21 @@ abstract class Server {
 		print "shutdown";
 	}
 	
-	public abstract function serverLoop();
 	
+	
+	public abstract function simulationStep();
+	
+	
+	protected function queueOutgoing(Packet $pkt) {
+		$this->responseStack->add($pkt);
+	}
+	
+	protected function sendOutgoing() {
+		$datagram =  new Datagram($this->socket);
+		foreach($this->responseStack as $index => $packet) {
+			$datagram->send($packet, $packet->getToAddr(), $packet->getToPort());
+		}
+	}
 	
 	protected abstract function init();
 	
@@ -117,6 +158,20 @@ abstract class Server {
 	
 	const BYTE = "C1";
 	const SBYTE = "c1";
+	
+	/**
+	 * Little endian byte order
+	 * @var unknown_type
+	 */
 	const DOUBLE = "d";
+	
+	/**
+	 * Null padded String
+	 * @var unknown_type
+	 */
+	const STRING = "a";
+	
+	const H_HEX = "H";
+	const L_HEX = "h";
 	
 }

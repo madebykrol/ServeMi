@@ -57,13 +57,19 @@ class Datagram {
 		$this->flags 		= $flags;
 		
 		$buffer = "";
-		$bytesReceived = socket_recvfrom($this->socket, $buffer, $this->length, $this->flags, $this->host, $this->port);
-		if($bytesReceived == -1) {
-			throw new SocketException(socket_last_error($this->socket));
-		} else {
-			
-			$this->buffer = $buffer;
-			return true;
+		socket_set_nonblock($this->socket);
+		$readArr = array($this->socket);
+		$writeArr = null;
+		$eArr = null;
+		if(socket_select($readArr, $writeArr, $eArr, 0) > 0) {
+			$bytesReceived = socket_recvfrom($this->socket, $buffer, $this->length, $this->flags, $this->host, $this->port);
+			if($bytesReceived == -1) {
+				throw new SocketException(socket_last_error($this->socket));
+			} else {
+				
+				$this->buffer = $buffer;
+				return true;
+			}
 		}
 		
 		return false;
@@ -72,7 +78,7 @@ class Datagram {
 	
 	public function send(Packet $pkt, $host, $port, $flags = 0) {
 
-		socket_sendto($this->socket, $pkt->getByteStream(), $pkt->getSize(), $flags, $host, $port);
+		socket_sendto($this->socket, $pkt->getBytes(), $pkt->getSize(), $flags, $host, $port);
 		
 	}
 	
@@ -88,6 +94,7 @@ class Datagram {
 	public function getPacket() {
 		
 		$pkt = new Packet();
+		$pkt->setFrom($this->host, $this->port);
 		$pkt->setByteStream($this->buffer);
 		
 		return $pkt;

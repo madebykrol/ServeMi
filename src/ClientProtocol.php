@@ -4,4 +4,6 @@ class ClientProtocol {
 	const HANDSHAKE = 0x01;
 	const TRANSFORM = 0x02;
 	
+	const ERROR = 0xFF;
+	
 }
