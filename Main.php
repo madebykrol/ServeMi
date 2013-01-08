@@ -62,8 +62,8 @@ class Main extends Server implements PacketListener{
 		switch($payload['command']) {
 			case 0x02 :
 				
-				$key 											= md5($payload['username'].$this->salt);
-				$uKey											= $payload['key'];
+				$key 	= md5($payload['username'].$this->salt);
+				$uKey	= $payload['key'];
 				
 				if($key == $uKey) {
 					return true;
